@@ -1,0 +1,36 @@
+# dsh-sovits-bridge — 把会话里的回复交给本机 GPT-SoVITS 念出来。
+#
+# 这里只是默认值。面板（设置 → 本地朗读）改的东西会写进 DSH_HOME/sovits-bridge.json，
+# 那里的值优先；删掉那个文件就回到这里。
+#
+# dir         GPT-SoVITS 根目录（就是放 go-webui.bat 的那一层）
+# python      相对 dir 的 python，整合包里是 runtime\python.exe
+# port        api_v2 的端口，默认 9880（跟 WebUI 不冲突：WebUI 是另一个端口）
+# preset      预训练底模：v2ProPlus（本机 GPT_weights_v2ProPlus 用的就是它）
+# device      cuda / cpu（4 GB 显存吃紧时可以先试 cuda，OOM 再换 cpu）
+# isHalf      半精度，省显存。默认关 —— 16 系/部分 Turing 卡上 fp16 会输出全零静音（实测 1650 Ti）。
+#             打开快一点，但如果合成出来「有长度、没声音」，第一个要关的就是它。
+# speed       语速 0.5–2.0
+# cut         切句方式，桥自己已经切好了，默认 cut5 只影响引擎内部的兜底
+# autoStart   第一次朗读时自动把 api_v2 拉起来（不会开 WebUI）
+# auto        自动朗读新回复（还要在面板里勾上「听哪些会话」）
+# saveAudio   每次合成完顺手把 wav 存进 outDir（面板可以关掉）
+# outDir      合成出来的 wav 放哪儿；留空 = 桌面\本地朗读
+- insert:
+    - id: sovits-bridge
+      name: 'dsh-sovits-bridge'
+      config:
+        dir: 'D:\GPT-SoVITS-v2pro-20250604'
+        python: 'runtime\python.exe'
+        port: 9880
+        preset: v2ProPlus
+        device: cuda
+        isHalf: false
+        speed: 1
+        cut: cut5
+        promptLang: zh
+        textLang: zh
+        autoStart: true
+        auto: false
+        saveAudio: true
+        outDir: 'D:\美丽新世界\朗读输出'

@@ -1,0 +1,65 @@
+{
+  "name": "dsh-sovits-bridge",
+  "version": "0.1.0",
+  "description": "本地朗读桥：把 DSH 会话里的回复，交给本机 GPT-SoVITS 的 api_v2 念出来（可换音色、可换参考音频）",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "gpt-sovits",
+    "tts",
+    "speech",
+    "voice-clone"
+  ],
+  "license": "MIT",
+  "author": "mifanbushibug",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mifanbushibug/dsh-sovits-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mifanbushibug/dsh-sovits-bridge/issues"
+  },
+  "homepage": "https://github.com/mifanbushibug/dsh-sovits-bridge#readme",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "test": "node selftest.mjs && node clienttest.mjs",
+    "test:host": "node selftest.mjs",
+    "test:client": "node clienttest.mjs",
+    "pack:check": "node --check index.js && node --check lib/app.js && node --check lib/client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "slots"
+      ],
+      "external": ["react"]
+    }
+  }
+}
