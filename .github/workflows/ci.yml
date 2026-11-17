@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: 语法检查
+        run: |
+          node --check index.js
+          node --check lib/app.js
+          node --check lib/client.js
+      - name: 宿主自测（假引擎，不需要 GPT-SoVITS）
+        run: node selftest.mjs
+      - name: 网页自测（假 DOM，不需要浏览器）
+        run: node clienttest.mjs

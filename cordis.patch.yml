@@ -11,6 +11,8 @@
 # isHalf      半精度，省显存。默认关 —— 16 系/部分 Turing 卡上 fp16 会输出全零静音（实测 1650 Ti）。
 #             打开快一点，但如果合成出来「有长度、没声音」，第一个要关的就是它。
 # speed       语速 0.5–2.0
+# textLang    朗读语种：auto / zh / en / ja / ko / yue（引擎还认 auto_yue、all_zh、all_ja、all_yue、all_ko）
+# promptLang  参考语种：参考音频说的是什么话。不是中文就一定要改，不然口音会串
 # cut         切句方式，桥自己已经切好了，默认 cut5 只影响引擎内部的兜底
 # autoStart   第一次朗读时自动把 api_v2 拉起来（不会开 WebUI）
 # auto        自动朗读新回复（还要在面板里勾上「听哪些会话」）

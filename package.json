@@ -1,6 +1,6 @@
 {
   "name": "dsh-sovits-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "本地朗读桥：把 DSH 会话里的回复，交给本机 GPT-SoVITS 的 api_v2 念出来（可换音色、可换参考音频）",
   "keywords": [
     "dsh",

@@ -48,6 +48,27 @@ dsh plugin --profile desktop remove dsh-sovits-bridge
 - 参考文本会自动猜：同名 `.txt` → 目录里的「XX 语音录.txt」按编号（`诺诺 (13).wav` → 第 13 条）→ 文件名本身就是台词的那些目录。猜不出来就留空，引擎会用「不带文本」的模式，音色差一点但能用。
 - 选的音色、参考文本、语速都存在 `%USERPROFILE%\.dsh\sovits-bridge.json`，重装不丢；删掉它就回到 `cordis.patch.yml` 的默认值。
 
+## 换语种（中英日韩粤 / 混合）
+
+面板「设置 → 本地朗读」第二张卡有两个下拉：**朗读语种**（要念的文字是什么话）和**参考语种**（参考音频说的是什么话）。
+两个互相独立，分别变成 `api_v2` 的 `text_lang` 和 `prompt_lang`。
+
+| 选项 | 引擎里的值 | 什么时候用 |
+| --- | --- | --- |
+| 多语种混合 | `auto` | 一段话里中英混着来，交给引擎逐句判别（默认） |
+| 中文 | `zh` | 中文里夹着英文词（数字、品牌名） |
+| 英文 | `en` | 整段英文；参考音频也是英文时两个下拉都改成 en |
+| 日文 | `ja` | 日文里夹英文 |
+| 韩文 | `ko` | 韩文里夹英文 |
+| 粤语 | `yue` | 粤语里夹英文 |
+
+- **参考音频不是中文，一定要把「参考语种」改成它实际的语言**：说日文的参考音频配 `zh`，念出来会带一口怪口音。
+- 每个音色各自记一份语种（连同参考音频、参考文本），切回来的时候一起换回去。
+- 引擎还认 `auto_yue` / `all_zh` / `all_ja` / `all_yue` / `all_ko`（强制走单一预处理器，`auto` 听错的时候用）。
+  面板没把它们列出来，需要时直接打接口：`POST /dsh-sovits-bridge/settings`，body `{"textLang":"all_zh"}`。
+- 切句也跟着走：中日韩按 `。！？；…` 断，英文按「句点 + 空格」断，中英混排不会糊成一整块；
+  只有数字/符号的碎块会被丢掉，纯英文、纯日文、纯韩文都会留下来念。
+
 ## 配置（`cordis.patch.yml` 只是默认值）
 
 | 键 | 意思 |
@@ -58,6 +79,8 @@ dsh plugin --profile desktop remove dsh-sovits-bridge
 | `preset` | 预训练底模，本机是 `v2ProPlus` |
 | `device` / `isHalf` | `cuda`/`cpu`、半精度（默认关，见下） |
 | `speed` | 语速 0.5–2.0 |
+| `textLang` | 朗读语种，`auto`/`zh`/`en`/`ja`/`ko`/`yue`，默认 `zh` |
+| `promptLang` | 参考语种，参考音频说的是什么话，默认 `zh` |
 | `autoStart` | 第一次朗读时自动拉起 api_v2 |
 | `auto` | 自动朗读（还要在面板里勾会话） |
 | `saveAudio` | 每次合成完顺手把 wav 存进 `outDir` |
@@ -81,12 +104,23 @@ v2ProPlus 在 16 系/部分 Turing 卡上开半精度，引擎会认认真真吐
 - 状态文件：`%USERPROFILE%\.dsh\sovits-bridge.json`。
 - 端口被别的 GPT-SoVITS 占着时，插件不会去关人家：面板会显示「已在线」，停止按钮也只关它自己拉起来的那个进程。
 
+## 兼容性
+
+| DSH | 结果 |
+| --- | --- |
+| **0.2.2-rc.3**（2026-11-13 起） | 0.1.1 实测通过：`GET /dsh-sovits-bridge/state` → 200、`selftest` 68/68、`clienttest` 全过 |
+| 0.2.x 更早的版本 | 0.1.0 起一直可用，用到的契约没变过 |
+
+插件只依赖四个宿主服务（`webServer` / `sessions` / `sessionTitle` / `timer`）和三个 slot
+（`sidebar.panellist`、`main`、`conversation.chat.assistant-actions`），这些都是 DSH 0.2.x 的稳定契约，
+所以 DSH 升级一般只需要重新跑一遍自测、换个版本号，不用动代码。
+
 ## 自测
 
 宿主侧和网页侧都不需要 GPT-SoVITS、不需要浏览器：
 
 ```bash
-node selftest.mjs     # 54 条断言：假引擎 + 真 HTTP，覆盖切句、合成、缓存、落盘、静音检测、路由校验
+node selftest.mjs     # 68 条断言：假引擎 + 真 HTTP，覆盖切句、合成、缓存、落盘、静音检测、路由校验
 node clienttest.mjs   # 假 DOM + 假 React，覆盖三个槽位注册、面板渲染、Web Audio 播放链路
 ```
 

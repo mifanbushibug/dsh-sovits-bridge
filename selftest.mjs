@@ -49,6 +49,14 @@ check('clean: emoji 去掉', !/[\u{1F300}-\u{1FAFF}]/u.test(cleanForSpeech('好�
 check('split: 按句号切', splitText('第一句。第二句！').length === 2, JSON.stringify(splitText('第一句。第二句！')))
 check('split: 长句硬切', splitText('啊'.repeat(400)).every((chunk) => chunk.length <= 140))
 check('split: 空文本没有块', splitText('   ').length === 0)
+// 英文/日文/韩文：既要按西方句点断开，也不能被「没有汉字」的过滤器整段丢掉
+const english = splitText('Hello there. This is the second sentence! And a third?')
+check('split: 英文按句点切开', english.length === 3, JSON.stringify(english))
+check('split: 英文没有被丢掉', english.join(' ').includes('Hello there'), JSON.stringify(english))
+const japanese = splitText('こんにちは。元気ですか？')
+check('split: 日文按句读切', japanese.length === 2, JSON.stringify(japanese))
+const korean = splitText('안녕하세요. 반갑습니다.')
+check('split: 韩文留得下来', korean.length === 2 && korean[0].includes('안녕'), JSON.stringify(korean))
 
 // ---- 配对 ---------------------------------------------------------------
 const voices = scanVoices({ dir: root })
@@ -63,7 +71,7 @@ check('scan: B 的参考音频按同名目录配上（深层 使用模型）', l
 check('scan: B 的台词按编号从语音录里取', ling && ling.promptText === '第二句台词在这里。', ling && ling.promptText)
 
 // ---- 假引擎 -------------------------------------------------------------
-const calls = { setGpt: [], setSovits: [], tts: 0, texts: [] }
+const calls = { setGpt: [], setSovits: [], tts: 0, texts: [], langs: [], promptLangs: [] }
 const wav = (size = 200) => {
   const buf = Buffer.alloc(44 + size)
   buf.write('RIFF', 0, 'ascii')
@@ -113,6 +121,8 @@ const engine = http.createServer((req, res) => {
       const payload = JSON.parse(raw)
       calls.tts += 1
       calls.texts.push(payload.text)
+      calls.langs.push(payload.text_lang)
+      calls.promptLangs.push(payload.prompt_lang)
       if (payload.text.includes('爆炸')) {
         res.writeHead(400, { 'content-type': 'application/json' })
         return res.end(JSON.stringify({ message: '合成失败（假引擎）' }))
@@ -188,6 +198,32 @@ const third = await get(`/audio?job=${job}&i=2`)
 check('audio: 第三块也能取', third.status === 200 && third.buffer.length > 40)
 check('audio: 越界 i 报 400', (await get(`/audio?job=${job}&i=9`)).status === 400)
 check('audio: 不存在的 job 报 404', (await get('/audio?job=nope&i=0')).status === 404)
+
+// ---- 语种 ---------------------------------------------------------------
+// 面板下拉的六项来自 /state.languages；改完之后新任务立刻用新语种。
+const languages = (await get('/state')).data.languages || []
+const langIds = languages.map((item) => item.id)
+check('lang: 六个模式都在', ['auto', 'zh', 'en', 'ja', 'ko', 'yue'].every((id) => langIds.includes(id)), langIds.join(','))
+check('lang: 默认中文', (await get('/state')).data.settings.textLang === 'zh')
+
+const toEnglish = await post('/settings', { textLang: 'en', promptLang: 'en' })
+check('lang: 能改成英文', toEnglish.data.settings.textLang === 'en' && toEnglish.data.settings.promptLang === 'en', JSON.stringify(toEnglish.data.settings.textLang))
+const englishJob = await post('/speak', { text: 'Hello there. This is a test.' })
+const englishAudio = await get(`/audio?job=${englishJob.data.job}&i=0`)
+check('lang: 英文能念（不再被丢字）', englishAudio.status === 200, String(englishAudio.status))
+check('lang: text_lang 传给了引擎', calls.langs.at(-1) === 'en', String(calls.langs.at(-1)))
+check('lang: prompt_lang 传给了引擎', calls.promptLangs.at(-1) === 'en', String(calls.promptLangs.at(-1)))
+
+const bogus = await post('/settings', { textLang: 'klingon' })
+check('lang: 不认识的语种被忽略', bogus.data.settings.textLang === 'en', String(bogus.data.settings.textLang))
+
+await post('/settings', { textLang: 'ja', promptLang: 'ja' })
+const japaneseJob = await post('/speak', { text: 'こんにちは。元気ですか？' })
+check('lang: 日文能念', (await get(`/audio?job=${japaneseJob.data.job}&i=0`)).status === 200)
+check('lang: 日文传成 ja', calls.langs.at(-1) === 'ja', String(calls.langs.at(-1)))
+
+await post('/settings', { textLang: 'zh', promptLang: 'zh' })
+check('lang: 能改回中文', (await get('/state')).data.settings.textLang === 'zh')
 
 const exported = await get(`/export?job=${job}&i=0`)
 check('export: 附件头', (exported.headers.get('content-disposition') || '').includes('attachment'))
